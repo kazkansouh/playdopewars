@@ -1,10 +1,12 @@
 
 class State :
-    money = 50
-    bagmax = 20
-    bag = {}
-    daymax = 30
-    day = 0
+    def __init__(self) :
+        self.money = 50
+        self.bagmax = 20
+        self.bag = {}
+        self.daymax = 30
+        self.day = 0
+        
 
     def capacity(self) :
         acc = 0
@@ -30,7 +32,7 @@ class State :
         return False
 
     def sell(self, item, count, matrix) :
-        if self.bag.has_key(item) and self.day < self.daymax:
+        if self.bag.has_key(item) and self.day < self.daymax and count > 0:
             amount = min(count, self.bag[item]['amount'])
             self.bag[item]['amount'] -= amount
             self.money += amount * matrix[item]
