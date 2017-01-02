@@ -201,7 +201,7 @@ def generateNumber(r, variables) :
             elif x < depth + 4 :
                 processed.append(Variable(variables[r.randint(0,len(variables)-1)]))
             else :
-                processed.append(Constant(r.randint(0,500)))
+                processed.append(Constant(r.randint(0,50)))
         else :
             b = processed.pop()
             a = processed.pop()
@@ -248,8 +248,8 @@ def visitNumber(number,
             toprocess.append(n.a)
             toprocess.append(n.b)
         elif isinstance(n, int) :
-            b = processed.pop()
             a = processed.pop()
+            b = processed.pop()
             if n == 1 :
                 processed.append(fplus(a,b))
             elif n == 2 :
@@ -288,8 +288,8 @@ def generateCondition(r, variables) :
             a = processed.pop()
             processed.append(Not(a))
         else :
-            b = processed.pop()
             a = processed.pop()
+            b = processed.pop()
             if processing == 1 :
                 processed.append(And(a,b))
             elif processing == 2 :
@@ -350,22 +350,22 @@ def visitCondition(cond,
     return processed.pop()
 
 def generateCommand(r, variables) :
-    toprocess = [0]
+    toprocess = [(0,0)]
     processed = []
 
     while len(toprocess) > 0 :
-        processing = toprocess.pop()
+        processing,depth = toprocess.pop()
         if processing == 0 :
-            x = r.randint(1,4)
-            if x < 3 :
-                toprocess.append(x)
-                toprocess.append(0)
-                toprocess.append(0)
+            x = r.randint(max(3 - depth,1), 8 - depth)
+            if x > 2 :
+                toprocess.append((x,depth))
+                toprocess.append((0,depth+1))
+                toprocess.append((0,depth+1))
             else :
                 a = generateNumber(r, variables)
-                if x == 3 :
+                if x == 1 :
                     processed.append(Buy(a))
-                elif x == 4 :
+                elif x == 2 :
                     processed.append(Sell(a))
         else :
             f = processed.pop()
@@ -397,8 +397,8 @@ def visitCommand(cmd,
             toprocess.append(n.true)
             toprocess.append(n.false)
         elif isinstance(n, int) :
-            f = processed.pop()
             t = processed.pop()
+            f = processed.pop()
             c = processed.pop()
             processed.append(fif(c,t,f))
     return processed.pop()
@@ -447,7 +447,7 @@ def evalCondition(number, context) :
 
 def strCommand(cmd) :
     return visitCommand(cmd,
-                        lambda c, t, f: "if " + c + " then {\n\t" + t + "\n} else {\n\t" + f + "\n}",
+                        lambda c, t, f: "if " + c + " then {\n\t" + t.replace("\n","\n\t") + "\n} else {\n\t" + f.replace("\n","\n\t") + "\n}",
                         lambda a: "buy(" + a + ")",
                         lambda a: "sell(" + a + ")",
                         strNumber,
@@ -547,16 +547,79 @@ def crossCommand(r, c1, c2) :
                         lambda c: crossCondition(r,c,None,conditions,numbers)
                       )
 
+mutatefactor = 0.75
+
+
+def mutateNumber(r, variables, n) :
+    f = lambda x: x if r.random() < mutatefactor else generateNumber(r, variables)
+
+    return visitNumber(n,
+                       lambda a, b: f(Plus(a,b)),
+                       lambda a, b: f(Minus(a,b)),
+                       lambda a, b: f(Multiply(a,b)),
+                       lambda a, b: f(Divide(a,b)),
+                       lambda a: f(Variable(a)),
+                       lambda a: f(Constant(a))
+                   )
+
+def mutateCondition(r, variables, c) :
+    g = lambda x: x if r.random() < mutatefactor else generateCondition(r, variables)
+    
+    return visitCondition(c,
+                          lambda a, b: g(And(a,b)),
+                          lambda a, b: g(Or(a,b)),
+                          lambda a: g(Not(a)),
+                          lambda a, b: g(LessThan(a,b)),
+                          lambda a, b: g(GreaterThan(a,b)),
+                          lambda a, b: g(Equal(a,b)),
+                          lambda n: mutateNumber(r,variables,n)
+                      )
+
+def mutateCommand(r, variables, cmd) :
+    g = lambda x: x if r.random() < mutatefactor else generateCommand(r, variables)
+
+    return visitCommand(cmd,
+                        lambda c, t, f: g(If(c,t,f)),
+                        lambda a: g(Buy(a)),
+                        lambda a: g(Sell(a)),
+                        lambda n: mutateNumber(r,variables,n),
+                        lambda c: mutateCondition(r,variables,c)
+                      )
+
+# - handmade 457
+# if c < v or i == 0 :
+#   if i < 20 or money < c:
+#     buy(money / c)
+#   else :
+#     sell(i / 4)
+# else :
+#   sell(i)
+#
+
+# generated - 1250
+# if (7 > citem1) then {
+#	buy((money / citem1))
+# } else {
+#	sell(money)
+# }
+#
+
+
+handmade = If(Or(LessThan(Variable('citem1'),Variable('vitem1')),
+                 Equal(Variable('iitem1'),Constant(0))),
+              If(And(LessThan(Variable('iitem1'),Constant(20)),
+                     GreaterThan(Variable('money'),Variable('citem1'))),
+                 Buy(Divide(Variable('money'),Variable('citem1'))),
+                 Sell(Divide(Variable('iitem1'),Constant(4)))),
+              Sell(Variable('iitem1')))
 
 if __name__ == "__main__" :
     r = Random()
     ctx = { 'var1' : 33,
             'var2' : 9 }
     n1 = generateCommand(r, ctx.keys())
-    n2 = generateCommand(r, ctx.keys())
+    n2 = mutateCommand(r, ctx.keys(), n1)
     
     print strCommand(n1)
     print
     print strCommand(n2)
-    print
-    print strCommand(crossCommand(r,n1,n2))
