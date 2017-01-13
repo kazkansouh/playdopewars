@@ -203,13 +203,17 @@ def main() :
                 'cmd': structure.crossCommand(r, tree1, tree5) ,
                 'score': 0})            
 
-        trees.append(trees[0])
-        trees.append(trees[1])
+        trees.append({
+                'cmd': tree1 ,
+                'score': 0})
+        trees.append({
+                'cmd': tree2 ,
+                'score': 0})
 
     print "------------"
-    print structure.strCommand(trees[0]['cmd'])
+    print structure.strCommand(tree1)
     print "------------"
-    playgame(trees[0]['cmd'])
+    playgame(tree1)
     print "------------"
 
     close = True
