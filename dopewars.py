@@ -1,5 +1,7 @@
 #! /usr/bin/python
 
+# best score 1689
+
 from state import State
 import structure
 
@@ -169,10 +171,7 @@ def main() :
         tree4 = trees[3]['cmd']
         tree5 = trees[4]['cmd']
 
-        trees = [ 
-            trees[0], 
-            trees[1],
-        ]
+        trees = []
 
         for j in range(1,100) :
             trees.append({ 
@@ -203,6 +202,9 @@ def main() :
             trees.append({
                 'cmd': structure.crossCommand(r, tree1, tree5) ,
                 'score': 0})            
+
+        trees.append(trees[0])
+        trees.append(trees[1])
 
     print "------------"
     print structure.strCommand(trees[0]['cmd'])
